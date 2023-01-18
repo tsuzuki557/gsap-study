@@ -1,48 +1,72 @@
 import './style.css'
 import gsap from "gsap";
 
-// ref. https://greensock.com/docs/v3/GSAP/gsap.quickSetter()
+import { Observer } from "gsap/Observer";
+gsap.registerPlugin(Observer);
 
-//const boxSet = gsap.quickSetter("#box", "x");
-//console.log(boxSet);
+// ref. https://greensock.com/docs/v3/Plugins/Observer
 
-const ball = document.querySelector(".ball");
-const pos = {
-  x: 0,
-  y: 0
-};
-const mouse = {
-  x: pos.x,
-  y: pos.y
-};
-const speed = 0.35;
+// Observer.create({
+//   target: window,
+//   type: "wheel,touch",
+//   onUp: (e) => {
+//     console.log("onUp" ,e.event.type);
+//   }, 
+//   onDown: (e) => {
+//     console.log("down", e.event.type);
+//   },
+//   tolerance: 10,
+//   //preventDefault: true,
+// });
 
-// 初期値
-gsap.set(ball, {xPercent: -100, yPercent: -100});
+let sections = document.querySelectorAll("section"),
+  images = document.querySelectorAll(".bg"),
+  headings = gsap.utils.toArray(".section-heading"),
+  outerWrappers = gsap.utils.toArray(".outer"),
+  innerWrappers = gsap.utils.toArray(".inner"),
+  currentIndex = -1,
+  wrap = gsap.utils.wrap(0, sections.length - 1),
+  animating;
 
-const xSet = gsap.quickSetter(ball, "x", "px");
-console.log(xSet)
-const ySet = gsap.quickSetter(ball, "y", "px");
+console.log(outerWrappers)
 
-window.addEventListener("mousemove", e => {    
-  mouse.x = e.x;
-  mouse.y = e.y;
+//gsap.set(outerWrappers, { yPercent: 100 });
+//gsap.set(innerWrappers, { yPercent: -100 });
 
-  // pos.x += (mouse.x - pos.x) * 0.15;
-  // pos.y += (mouse.y - pos.y) * 0.15;
+function gotoSection(index, direction) {
+  console.log(index,direction, "sss")
+  index = wrap(index); // make sure it's valid
+  animating = true;
+  let fromTop = direction === -1,
+      dFactor = fromTop ? -1 : 1,
+      tl = gsap.timeline({
+        defaults: { duration: 1.25, ease: "power1.inOut" },
+        onComplete: () => animating = false
+      });
+  if (currentIndex >= 0) {
+    gsap.set(sections[currentIndex], { zIndex: 0 });
+    tl.to(images[currentIndex], { yPercent: -15 * dFactor })
+      .set(sections[currentIndex], { autoAlpha: 0 });
+  }
+  gsap.set(sections[index], { autoAlpha: 1, zIndex: 1 });
+  tl.fromTo([outerWrappers[index], innerWrappers[index]], { 
+      yPercent: i => i ? -100 * dFactor : 100 * dFactor
+    }, { 
+      yPercent: 0 
+    }, 0)
+    .fromTo(images[index], { yPercent: 15 * dFactor }, { yPercent: 0 }, 0);
 
-  // xSet(pos.x);
-  // ySet(pos.y);  
-  //console.log("mouse")
+  currentIndex = index;
+}
+
+Observer.create({
+  // type: "wheel,touch,pointer",
+  type: "wheel,touch", 
+  wheelSpeed: -1,
+  onDown: () => !animating && gotoSection(currentIndex - 1, -1),
+  onUp: () => !animating && gotoSection(currentIndex + 1, 1),
+  tolerance: 10,
+  //preventDefault: true
 });
 
-
-gsap.ticker.add(() => {
-  // イージング公式
-  const dt = 1.0 - Math.pow(1.0 - speed, gsap.ticker.deltaRatio()); 
-  pos.x += (mouse.x - pos.x) * dt;
-  pos.y += (mouse.y - pos.y) * dt;
-
-  xSet(pos.x);
-  ySet(pos.y);
-});
+gotoSection(0, 1);
